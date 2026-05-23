@@ -1,0 +1,64 @@
+services:
+  foodtracker:
+    image: foodtracker:${IMAGE_TAG:-latest}
+    container_name: foodtracker_app
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    labels:
+      logging: "promtail"
+      app: "foodtracker"
+    networks:
+      - app_network
+
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: foodtracker_loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yml
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/local-config.yml:ro
+      - loki_data:/loki
+    networks:
+      - app_network
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: foodtracker_promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./observability/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - loki
+    networks:
+      - app_network
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: foodtracker_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - loki
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  loki_data:
+  grafana_data:
