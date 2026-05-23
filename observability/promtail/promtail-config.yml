@@ -9,23 +9,11 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  - job_name: docker-containers
-
-    docker_sd_configs:
-      - host: unix:///var/run/docker.sock
-        refresh_interval: 5s
-
-    relabel_configs:
-      - source_labels: ['__meta_docker_container_name']
-        regex: '/(.*)'
-        target_label: 'container'
-
-      - source_labels: ['__meta_docker_container_label_app']
-        target_label: 'app'
-
-      - source_labels: ['__meta_docker_container_label_logging']
-        regex: 'promtail'
-        action: keep
-
-    pipeline_stages:
-      - docker: {}
+  - job_name: foodtracker-nginx-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: foodtracker-nginx
+          app: foodtracker
+          __path__: /var/log/foodtracker/*.log
